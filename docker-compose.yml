@@ -1,0 +1,18 @@
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: projet2-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: pdr_db
+      MYSQL_USER: projet2
+      MYSQL_PASSWORD: 
+    ports:
+      - "13306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
