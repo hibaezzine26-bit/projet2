@@ -24,7 +24,7 @@ public class ExcelImportService {
     private final ArticlePDRRepository articlePDRRepository;
     private final StockRepository stockRepository;
     private final BacklogOTRepository backlogOTRepository;
-    private final BOMRepository bomRepository;
+    private final FicheBOMRepository bomRepository;
     private final ConsommationRepository consommationRepository;
     private final SecteurRepository secteurRepository;
 
@@ -238,7 +238,7 @@ public class ExcelImportService {
             ArticlePDR savedArticle = articlePDRRepository.save(article);
 
             Secteur secteur = getOrCreateSecteur(secteurLabel);
-            BOM bom = new BOM();
+            FicheBOM bom = new FicheBOM();
             bom.setArticle(savedArticle);
             bom.setSecteur(secteur);
             bom.setReference(reference);

@@ -155,4 +155,9 @@ public class MoteurApprovisionnementService {
             throw new RuntimeException("Erreur lors de la génération du summary: " + e.getMessage());
         }
     }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> obtenirSummaryAnalyseDto() {
+        return obtenirSummaryAnalyse();
+    }
 }

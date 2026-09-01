@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ImportPage from './pages/ImportPage';
 import ReportingPage from './pages/ReportingPage';
+import ConsumptionAnomalyPage from './pages/ConsumptionAnomalyPage';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="import" element={<ImportPage />} />
             <Route path="reporting" element={<ReportingPage />} />
+            <Route path="consommation-anormale" element={<ConsumptionAnomalyPage />} />
           </Route>
         </Routes>
       </AuthProvider>

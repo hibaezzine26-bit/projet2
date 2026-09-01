@@ -1,9 +1,10 @@
 package com.ocp.pdr.repository;
 
-import com.ocp.pdr.model.BOM;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.ocp.pdr.model.FicheBOM;
+
 @Repository
-public interface BOMRepository extends JpaRepository<BOM, Long> {
+public interface FicheBOMRepository extends JpaRepository<FicheBOM, Long> {
 }

@@ -1,0 +1,52 @@
+.anomaly-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.anomaly-card {
+  padding: 1.5rem;
+}
+
+.anomaly-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.anomaly-summary > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+}
+
+.anomaly-summary .summary-label {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.anomaly-summary strong {
+  font-size: 1.8rem;
+  color: #f87171;
+}
+
+.qty-badge {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.qty-badge.danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}

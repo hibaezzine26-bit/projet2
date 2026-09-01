@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { LayoutDashboard, UploadCloud, FileText, LogOut, Package } from 'lucide-react';
+import { LayoutDashboard, UploadCloud, FileText, AlertTriangle, LogOut } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = () => {
@@ -11,6 +11,7 @@ const Sidebar = () => {
     { path: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { path: '/import', label: 'Import SAP/Excel', icon: UploadCloud },
     { path: '/reporting', label: 'Reporting & Export', icon: FileText },
+    { path: '/consommation-anormale', label: 'Consommation inhabituelle', icon: AlertTriangle },
   ];
 
   return (

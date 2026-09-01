@@ -4,14 +4,14 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class SecteurBOMTest {
+class SecteurFicheBOMTest {
 
     @Test
     void shouldCreateBomLinkedToSecteur() {
         Secteur secteur = new Secteur();
         secteur.setNom("Ammoniac");
 
-        BOM bom = new BOM();
+        FicheBOM bom = new FicheBOM();
         bom.setSecteur(secteur);
 
         assertEquals("Ammoniac", bom.getSecteur().getNom());
