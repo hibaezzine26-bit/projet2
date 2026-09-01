@@ -1,13 +1,17 @@
 package com.ocp.pdr;
 
-import com.ocp.pdr.model.Administrateur;
-import com.ocp.pdr.repository.AdministrateurRepository;
+import java.util.Optional;
+
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+
+import com.ocp.pdr.model.Administrateur;
+import com.ocp.pdr.repository.AdministrateurRepository;
+
 import lombok.RequiredArgsConstructor;
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -25,7 +29,7 @@ public class DataSeeder implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE article_pdr MODIFY COLUMN description TEXT");
             jdbcTemplate.execute("ALTER TABLE article_pdr MODIFY COLUMN categorie TEXT");
             jdbcTemplate.execute("ALTER TABLE bom MODIFY COLUMN reference LONGTEXT");
-        } catch (Exception ignored) {
+        } catch (DataAccessException ignored) {
             // Ignoré si la table n'existe pas encore ou selon le dialecte
         }
 

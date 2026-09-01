@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -48,6 +49,12 @@ public class ArticlePDR {
 
     @Column(name = "seuil_max")
     private Double seuilMax;
+
+    @Column(name = "date_creation")
+    private LocalDateTime dateCreation;
+
+    @Column(name = "date_modification")
+    private LocalDateTime dateModification;
 
     @com.fasterxml.jackson.annotation.JsonIgnore
     @OneToMany(mappedBy = "article", cascade = CascadeType.ALL, orphanRemoval = true)

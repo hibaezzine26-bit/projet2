@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "backlog_ot")
@@ -25,6 +26,12 @@ public class BacklogOT {
 
     @Column(name = "date_import")
     private LocalDate dateImport;
+
+    @Column(name = "source_fichier")
+    private String sourceFichier;
+
+    @Column(name = "date_import_systeme")
+    private LocalDateTime dateImportSysteme;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "article_id", nullable = false)

@@ -1,5 +1,6 @@
 package com.ocp.pdr.model;
 
+import com.ocp.pdr.model.enums.StatutImport;
 import com.ocp.pdr.model.enums.TypeFichier;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -31,6 +32,13 @@ public class ImportDonnees {
 
     @Column(name = "nombre_lignes")
     private Integer nombreLignes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statut")
+    private StatutImport statut;
+
+    @Column(name = "message_resultat", columnDefinition = "TEXT")
+    private String messageResultat;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "administrateur_id")

@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS article_pdr (
     groupe_homogene VARCHAR(50),
     seuil_min DOUBLE,
     seuil_max DOUBLE,
+    date_creation DATETIME,
+    date_modification DATETIME,
     PRIMARY KEY (id)
 );
 
@@ -47,6 +49,8 @@ CREATE TABLE IF NOT EXISTS stock (
     id BIGINT NOT NULL AUTO_INCREMENT,
     quantite_stock DOUBLE,
     date_stock DATE,
+    source_fichier VARCHAR(255),
+    date_import DATETIME,
     article_id BIGINT NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT fk_stock_article FOREIGN KEY (article_id) REFERENCES article_pdr(id)
@@ -57,6 +61,8 @@ CREATE TABLE IF NOT EXISTS backlog_ot (
     numero_ot VARCHAR(255),
     quantite_non_lancee DOUBLE,
     date_import DATE,
+    source_fichier VARCHAR(255),
+    date_import_systeme DATETIME,
     article_id BIGINT NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT fk_backlog_article FOREIGN KEY (article_id) REFERENCES article_pdr(id)
@@ -65,6 +71,8 @@ CREATE TABLE IF NOT EXISTS backlog_ot (
 CREATE TABLE IF NOT EXISTS consommation (
     id BIGINT NOT NULL AUTO_INCREMENT,
     quantite_consommee DOUBLE,
+    source_fichier VARCHAR(255),
+    date_import DATETIME,
     date_consommation DATE,
     numero_ot VARCHAR(255),
     article_id BIGINT NOT NULL,
@@ -75,6 +83,8 @@ CREATE TABLE IF NOT EXISTS consommation (
 CREATE TABLE IF NOT EXISTS besoin_en_cours (
     id BIGINT NOT NULL AUTO_INCREMENT,
     quantite_besoin DOUBLE,
+    source_fichier VARCHAR(255),
+    date_import DATETIME,
     date_besoin DATE,
     statut VARCHAR(255),
     article_id BIGINT NOT NULL,
@@ -86,6 +96,8 @@ CREATE TABLE IF NOT EXISTS import_donnees (
     id BIGINT NOT NULL AUTO_INCREMENT,
     nom_fichier VARCHAR(255),
     type_fichier VARCHAR(50),
+    statut VARCHAR(50),
+    message_resultat TEXT,
     date_import DATETIME,
     nombre_lignes INTEGER,
     administrateur_id BIGINT,

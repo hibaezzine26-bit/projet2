@@ -1,20 +1,29 @@
 package com.ocp.pdr.service;
 
-import com.ocp.pdr.model.AnomalieConsommation;
-import com.ocp.pdr.model.ResultatApprovisionnement;
-import com.ocp.pdr.model.enums.ModeApprovisionnement;
-import com.ocp.pdr.repository.AnomalieConsommationRepository;
-import com.ocp.pdr.repository.ResultatApprovisionnementRepository;
-import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.stereotype.Service;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
+
+import com.ocp.pdr.model.AnomalieConsommation;
+import com.ocp.pdr.model.ResultatApprovisionnement;
+import com.ocp.pdr.model.enums.ModeApprovisionnement;
+import com.ocp.pdr.repository.AnomalieConsommationRepository;
+import com.ocp.pdr.repository.ResultatApprovisionnementRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -24,11 +33,10 @@ public class ExcelExportService {
     private final AnomalieConsommationRepository anomalieRepository;
 
     public ByteArrayInputStream exportResultats() {
-        List<ResultatApprovisionnement> allResultats = resultatRepository.findAll();
-        List<AnomalieConsommation> allAnomalies = anomalieRepository.findAll();
+        List<ResultatApprovisionnement> allResultats = resultatRepository.findAllWithArticle();
+        List<AnomalieConsommation> allAnomalies = anomalieRepository.findAllWithArticle();
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            // Style d'en-tête
             CellStyle headerStyle = workbook.createCellStyle();
             Font font = workbook.createFont();
             font.setBold(true);
@@ -36,28 +44,23 @@ public class ExcelExportService {
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-            // 1. Feuille Consolidée (Tous)
             createResultSheet(workbook, "Reporting Consolidé", allResultats, headerStyle);
 
-            // 2. Feuille Min & Max
             List<ResultatApprovisionnement> minMax = allResultats.stream()
                     .filter(r -> r.getMode() == ModeApprovisionnement.MIN_MAX)
                     .collect(Collectors.toList());
             createResultSheet(workbook, "1. Min & Max", minMax, headerStyle);
 
-            // 3. Feuille Planifié
             List<ResultatApprovisionnement> planifies = allResultats.stream()
                     .filter(r -> r.getMode() == ModeApprovisionnement.PLANIFIE)
                     .collect(Collectors.toList());
             createResultSheet(workbook, "2. Mode Planifié", planifies, headerStyle);
 
-            // 4. Feuille Sur Demande
             List<ResultatApprovisionnement> surDemande = allResultats.stream()
                     .filter(r -> r.getMode() == ModeApprovisionnement.SUR_DEMANDE)
                     .collect(Collectors.toList());
             createResultSheet(workbook, "3. Sur Demande", surDemande, headerStyle);
 
-            // 5. Feuille Consommations Inhabituelles
             createAnomalySheet(workbook, "4. Anomalies Conso", allAnomalies, headerStyle);
 
             workbook.write(out);
@@ -68,10 +71,43 @@ public class ExcelExportService {
         }
     }
 
+    public ByteArrayInputStream exportMinMax() {
+        return exportResultatsParMode(ModeApprovisionnement.MIN_MAX, "1. Min & Max");
+    }
+
+    public ByteArrayInputStream exportPlanifie() {
+        return exportResultatsParMode(ModeApprovisionnement.PLANIFIE, "2. Mode Planifié");
+    }
+
+    public ByteArrayInputStream exportSurDemande() {
+        return exportResultatsParMode(ModeApprovisionnement.SUR_DEMANDE, "3. Sur Demande");
+    }
+
+    private ByteArrayInputStream exportResultatsParMode(ModeApprovisionnement mode, String sheetName) {
+        List<ResultatApprovisionnement> resultats = resultatRepository.findAllWithArticle().stream()
+                .filter(r -> r.getMode() == mode)
+                .collect(Collectors.toList());
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font font = workbook.createFont();
+            font.setBold(true);
+            headerStyle.setFont(font);
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            createResultSheet(workbook, sheetName, resultats, headerStyle);
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            throw new RuntimeException("Erreur lors de l'export Excel de la règle " + mode + ": " + e.getMessage());
+        }
+    }
+
     private void createResultSheet(Workbook workbook, String sheetName, List<ResultatApprovisionnement> list, CellStyle headerStyle) {
         Sheet sheet = workbook.createSheet(sheetName);
         Row headerRow = sheet.createRow(0);
-        String[] columns = {"Code SAP", "Code Oracle", "Désignation", "Mode", "Priorité", "Qté à Lancer", "Seuil Min", "Seuil Max", "Justification", "Date Analyse"};
+        String[] columns = {"Code SAP", "Description", "UDM", "Quantité demandée", "Catégorie"};
 
         for (int col = 0; col < columns.length; col++) {
             Cell cell = headerRow.createCell(col);
@@ -85,15 +121,10 @@ public class ExcelExportService {
             var art = res.getArticle();
 
             row.createCell(0).setCellValue(art != null ? art.getCodeSAP() : "");
-            row.createCell(1).setCellValue(art != null && art.getCodeOracle() != null ? art.getCodeOracle() : "");
-            row.createCell(2).setCellValue(art != null && art.getDescription() != null ? art.getDescription() : "");
-            row.createCell(3).setCellValue(res.getMode() != null ? res.getMode().name() : "");
-            row.createCell(4).setCellValue(res.getPriorite() != null ? res.getPriorite() : 0);
-            row.createCell(5).setCellValue(res.getQuantiteALancer() != null ? res.getQuantiteALancer() : 0.0);
-            row.createCell(6).setCellValue(art != null && art.getSeuilMin() != null ? art.getSeuilMin() : 0.0);
-            row.createCell(7).setCellValue(art != null && art.getSeuilMax() != null ? art.getSeuilMax() : 0.0);
-            row.createCell(8).setCellValue(res.getJustification() != null ? res.getJustification() : "");
-            row.createCell(9).setCellValue(res.getDateAnalyse() != null ? res.getDateAnalyse().toString() : "");
+            row.createCell(1).setCellValue(art != null && art.getDescription() != null ? art.getDescription() : "");
+            row.createCell(2).setCellValue(art != null && art.getUdm() != null ? art.getUdm() : "");
+            row.createCell(3).setCellValue(res.getQuantiteALancer() != null ? res.getQuantiteALancer() : 0.0);
+            row.createCell(4).setCellValue(art != null && art.getCategorie() != null ? art.getCategorie() : "");
         }
 
         for (int col = 0; col < columns.length; col++) {
@@ -131,5 +162,26 @@ public class ExcelExportService {
             sheet.autoSizeColumn(col);
         }
     }
-}
 
+    public ByteArrayInputStream exportAnomalies() {
+        List<AnomalieConsommation> allAnomalies = anomalieRepository.findAllWithArticle();
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            // Style d'en-tête
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font font = workbook.createFont();
+            font.setBold(true);
+            headerStyle.setFont(font);
+            headerStyle.setFillForegroundColor(IndexedColors.RED.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            createAnomalySheet(workbook, "Anomalies Consommation", allAnomalies, headerStyle);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+
+        } catch (IOException e) {
+            throw new RuntimeException("Erreur lors de l'export des anomalies: " + e.getMessage());
+        }
+    }
+}

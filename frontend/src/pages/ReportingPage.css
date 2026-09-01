@@ -103,6 +103,17 @@
 }
 
 /* Controls Bar */
+.export-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.export-rules-grid .btn {
+  justify-content: center;
+}
+
 .reporting-controls {
   display: flex;
   justify-content: space-between;

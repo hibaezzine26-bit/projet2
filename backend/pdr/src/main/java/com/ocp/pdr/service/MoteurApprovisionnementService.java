@@ -1,21 +1,27 @@
 package com.ocp.pdr.service;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.ocp.pdr.model.ArticlePDR;
 import com.ocp.pdr.model.ResultatApprovisionnement;
 import com.ocp.pdr.model.enums.ModeApprovisionnement;
 import com.ocp.pdr.repository.AnomalieConsommationRepository;
 import com.ocp.pdr.repository.ArticlePDRRepository;
 import com.ocp.pdr.repository.ResultatApprovisionnementRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MoteurApprovisionnementService {
 
     private final RegleMinMaxService regleMinMaxService;
@@ -68,23 +74,85 @@ public class MoteurApprovisionnementService {
 
     @Transactional
     public List<ResultatApprovisionnement> executerAnalyseGlobale() {
-        resultatApprovisionnementRepository.deleteAll();
-        anomalieConsommationRepository.deleteAll();
+        log.info("Démarrage de l'analyse globale d'approvisionnement");
+        long startTime = System.currentTimeMillis();
         
-        List<ArticlePDR> allArticles = articlePDRRepository.findAll();
-        List<ResultatApprovisionnement> resultats = new ArrayList<>();
+        try {
+            resultatApprovisionnementRepository.deleteAll();
+            anomalieConsommationRepository.deleteAll();
+            
+            List<ArticlePDR> allArticles = articlePDRRepository.findAll();
+            List<ResultatApprovisionnement> resultats = new ArrayList<>();
 
-        for (ArticlePDR article : allArticles) {
-            // 1. Analyse d'approvisionnement
-            ResultatApprovisionnement resultat = analyser(article);
-            if (resultat != null) {
-                resultats.add(resultat);
+            log.info("Nombre d'articles à analyser: {}", allArticles.size());
+
+            for (ArticlePDR article : allArticles) {
+                try {
+                    // 1. Analyse d'approvisionnement
+                    ResultatApprovisionnement resultat = analyser(article);
+                    if (resultat != null) {
+                        resultats.add(resultat);
+                    }
+
+                    // 2. Analyse des consommations inhabituelles
+                    analyseConsommationService.detecterEtSauvegarderAnomalie(article);
+                } catch (Exception e) {
+                    log.error("Erreur lors de l'analyse de l'article {}: {}", article.getCodeSAP(), e.getMessage());
+                }
             }
 
-            // 2. Analyse des consommations inhabituelles
-            analyseConsommationService.detecterEtSauvegarderAnomalie(article);
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Analyse globale terminée en {}ms. Résultats générés: {}", duration, resultats.size());
+            
+            return resultats;
+        } catch (Exception e) {
+            log.error("Erreur critique lors de l'analyse globale", e);
+            throw new RuntimeException("Erreur lors de l'analyse globale: " + e.getMessage());
         }
+    }
 
-        return resultats;
+    @Transactional(readOnly = true)
+    public Map<String, Object> obtenirSummaryAnalyse() {
+        Map<String, Object> summary = new HashMap<>();
+
+        try {
+            List<ResultatApprovisionnement> resultats = resultatApprovisionnementRepository.findAll();
+            long totalArticles = articlePDRRepository.count();
+
+            long minMaxCount = resultats.stream()
+                    .filter(r -> r.getMode() == ModeApprovisionnement.MIN_MAX)
+                    .count();
+            long planifieCount = resultats.stream()
+                    .filter(r -> r.getMode() == ModeApprovisionnement.PLANIFIE)
+                    .count();
+            long surDemandeCount = resultats.stream()
+                    .filter(r -> r.getMode() == ModeApprovisionnement.SUR_DEMANDE)
+                    .count();
+            long zeroStockArticles = articlePDRRepository.countArticlesWithZeroStock();
+            long articlesEnStock = Math.max(0, totalArticles - zeroStockArticles);
+
+            double minMaxRate = totalArticles > 0 ? (minMaxCount * 100.0) / totalArticles : 0.0;
+            double planifieRate = totalArticles > 0 ? (planifieCount * 100.0) / totalArticles : 0.0;
+            double surDemandeRate = totalArticles > 0 ? (surDemandeCount * 100.0) / totalArticles : 0.0;
+            double stockRate = totalArticles > 0 ? (articlesEnStock * 100.0) / totalArticles : 0.0;
+
+            summary.put("totalArticles", totalArticles);
+            summary.put("minMaxCount", minMaxCount);
+            summary.put("planifieCount", planifieCount);
+            summary.put("surDemandeCount", surDemandeCount);
+            summary.put("anomaliesCount", anomalieConsommationRepository.count());
+            summary.put("articlesEnStock", articlesEnStock);
+            summary.put("articlesSansStock", zeroStockArticles);
+            summary.put("minMaxRate", minMaxRate);
+            summary.put("planifieRate", planifieRate);
+            summary.put("surDemandeRate", surDemandeRate);
+            summary.put("stockRate", stockRate);
+            summary.put("resultatCount", resultats.size());
+
+            return summary;
+        } catch (Exception e) {
+            log.error("Erreur lors de la génération du summary", e);
+            throw new RuntimeException("Erreur lors de la génération du summary: " + e.getMessage());
+        }
     }
 }

@@ -46,14 +46,45 @@
   margin-top: 0.5rem;
 }
 
-.file-info {
+.files-list {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.files-list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-md);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.files-list-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.files-list-header span {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: rgba(15, 23, 42, 0.25);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+}
+
+.file-row:last-child {
+  margin-bottom: 1rem;
 }
 
 .file-name {
@@ -64,8 +95,38 @@
   color: var(--text-primary);
 }
 
+.file-name div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.file-name small {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.remove-file-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.remove-file-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
 .start-upload-btn {
-  min-width: 150px;
+  min-width: 180px;
+  margin-top: 0.5rem;
 }
 
 .import-result {
