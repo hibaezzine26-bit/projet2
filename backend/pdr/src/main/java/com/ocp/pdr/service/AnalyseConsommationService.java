@@ -1,13 +1,15 @@
 package com.ocp.pdr.service;
+import java.time.LocalDate;
+import java.time.YearMonth;
+
+import org.springframework.stereotype.Service;
 
 import com.ocp.pdr.model.AnomalieConsommation;
 import com.ocp.pdr.model.ArticlePDR;
 import com.ocp.pdr.model.Consommation;
 import com.ocp.pdr.repository.AnomalieConsommationRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -20,10 +22,19 @@ public class AnalyseConsommationService {
             return 0.0;
         }
 
-        // Calculer la consommation sur les 30 derniers jours
-        LocalDate thirtyDaysAgo = LocalDate.now().minusDays(30);
+        LocalDate derniereDate = article.getConsommations().stream()
+            .map(Consommation::getDateConsommation)
+            .filter(date -> date != null)
+            .max(LocalDate::compareTo)
+            .orElse(null);
+        if (derniereDate == null) {
+            return 0.0;
+        }
+
+        YearMonth dernierMois = YearMonth.from(derniereDate);
         return article.getConsommations().stream()
-                .filter(c -> c.getDateConsommation() != null && c.getDateConsommation().isAfter(thirtyDaysAgo))
+            .filter(c -> c.getDateConsommation() != null
+                && YearMonth.from(c.getDateConsommation()).equals(dernierMois))
                 .mapToDouble(c -> c.getQuantiteConsommee() != null ? c.getQuantiteConsommee() : 0.0)
                 .sum();
     }

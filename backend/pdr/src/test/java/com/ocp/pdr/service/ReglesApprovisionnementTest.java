@@ -1,14 +1,16 @@
 package com.ocp.pdr.service;
 
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+
 import com.ocp.pdr.model.ArticlePDR;
 import com.ocp.pdr.model.BacklogOT;
 import com.ocp.pdr.model.Stock;
 import com.ocp.pdr.model.enums.GroupeHomogene;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class ReglesApprovisionnementTest {
 
@@ -36,12 +38,37 @@ class ReglesApprovisionnementTest {
     }
 
     @Test
+    void surDemande_estRefuseeDesQuUneLigneExisteDansLeBacklog() {
+        ArticlePDR article = articleAvecStockEtGroupe(20.0, 40.0, null);
+        article.setBacklogOTs(List.of(ot(0.0)));
+
+        assertFalse(surDemandeService.verifier(article));
+    }
+
+    @Test
     void priorite3_surDemande_si_non_couvert_non_backlog_et_non_prioritaire() {
         ArticlePDR article = articleAvecStockEtGroupe(20.0, 40.0, null);
 
         assertFalse(minMaxService.verifier(article));
         assertFalse(planifieService.verifier(article));
         assertTrue(surDemandeService.verifier(article));
+    }
+
+    @Test
+    void surDemande_utiliseLeDeficitQuandAucunBesoinEnCoursNExiste() {
+        ArticlePDR article = articleAvecStockEtGroupe(20.0, 40.0, null);
+        article.setSeuilMax(50.0);
+
+        assertEquals(30.0, surDemandeService.calculerQuantite(article));
+    }
+
+    @Test
+    void planifie_utiliseLeSeuilMaxMoinsLeStock() {
+        ArticlePDR article = articleAvecStockEtGroupe(20.0, 40.0, null);
+        article.setSeuilMax(50.0);
+        article.setBacklogOTs(List.of(ot(15.0)));
+
+        assertEquals(30.0, planifieService.calculerQuantite(article));
     }
 
     @Test

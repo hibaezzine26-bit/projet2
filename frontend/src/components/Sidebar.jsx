@@ -8,10 +8,10 @@ const Sidebar = () => {
   const { logout } = useContext(AuthContext);
 
   const navItems = [
-    { path: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-    { path: '/import', label: 'Import SAP/Excel', icon: UploadCloud },
-    { path: '/reporting', label: 'Reporting & Export', icon: FileText },
-    { path: '/consommation-anormale', label: 'Consommation inhabituelle', icon: AlertTriangle },
+    { path: '/app/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    { path: '/app/import', label: 'Import SAP/Excel', icon: UploadCloud },
+    { path: '/app/reporting', label: 'Reporting & Export', icon: FileText },
+    { path: '/app/consommation-anormale', label: 'Consommation inhabituelle', icon: AlertTriangle },
   ];
 
   return (

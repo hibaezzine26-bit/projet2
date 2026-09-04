@@ -1,0 +1,7 @@
+target
+.git
+.mvn
+mvnw
+mvnw.cmd
+HELP.md
+mvn-test-output.txt

@@ -17,6 +17,7 @@ import com.ocp.pdr.model.AnomalieConsommation;
 import com.ocp.pdr.model.ResultatApprovisionnement;
 import com.ocp.pdr.repository.AnomalieConsommationRepository;
 import com.ocp.pdr.repository.ArticlePDRRepository;
+import com.ocp.pdr.repository.HistoriqueTraitementRepository;
 import com.ocp.pdr.repository.ResultatApprovisionnementRepository;
 import com.ocp.pdr.service.MoteurApprovisionnementService;
 
@@ -34,6 +35,7 @@ public class AnalyseController {
     private final ResultatApprovisionnementRepository resultatRepository;
     private final AnomalieConsommationRepository anomalieRepository;
     private final ArticlePDRRepository articlePDRRepository;
+    private final HistoriqueTraitementRepository historiqueTraitementRepository;
 
     @PostMapping("/executer")
     public ResponseEntity<ApiSuccessResponse> executerAnalyse() {
@@ -68,6 +70,14 @@ public class AnalyseController {
     @GetMapping("/anomalies")
     public ResponseEntity<List<AnomalieConsommation>> getAnomalies() {
         return ResponseEntity.ok(anomalieRepository.findAllWithArticle());
+    }
+
+    @GetMapping("/etat")
+    public ResponseEntity<Map<String, Object>> getEtatAnalyse() {
+        Map<String, Object> etat = new HashMap<>();
+        etat.put("analyseLancee", historiqueTraitementRepository
+                .findTopByOperationAndStatutOrderByDateOperationDesc("ANALYSE_GLOBALE", "SUCCESS").isPresent());
+        return ResponseEntity.ok(etat);
     }
 
     @GetMapping("/summary")

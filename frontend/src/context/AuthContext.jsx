@@ -10,12 +10,8 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Decode or validate token here if needed
-      // For now, assume if token exists, user is logged in
-      setUser({ token });
-    }
+    localStorage.removeItem('token');
+    setUser(null);
     setLoading(false);
   }, []);
 
@@ -26,7 +22,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         localStorage.setItem('token', token);
         setUser({ token });
-        navigate('/dashboard');
+        navigate('/app/dashboard');
         return;
       }
       throw new Error('Token absent dans la réponse du backend');

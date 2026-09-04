@@ -3,7 +3,6 @@ package com.ocp.pdr.service;
 import org.springframework.stereotype.Service;
 
 import com.ocp.pdr.model.ArticlePDR;
-import com.ocp.pdr.model.BacklogOT;
 import com.ocp.pdr.model.enums.GroupeHomogene;
 
 @Service
@@ -26,14 +25,12 @@ public class ReglePlanifieService {
     }
 
     public Double calculerQuantite(ArticlePDR article) {
-        if (article == null || article.getBacklogOTs() == null) {
+        if (article == null || article.getSeuilMax() == null) {
             return 0.0;
         }
 
-        return article.getBacklogOTs().stream()
-                .filter(ot -> ot.getQuantiteNonLancee() != null)
-                .mapToDouble(BacklogOT::getQuantiteNonLancee)
-                .sum();
+        double quantiteALancer = article.getSeuilMax() - calculerStockTotal(article);
+        return Math.max(quantiteALancer, 0.0);
     }
 
     private boolean isGroupePrioritaire(ArticlePDR article) {

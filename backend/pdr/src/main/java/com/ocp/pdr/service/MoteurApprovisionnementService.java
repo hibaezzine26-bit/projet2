@@ -10,10 +10,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ocp.pdr.model.ArticlePDR;
+import com.ocp.pdr.model.HistoriqueTraitement;
 import com.ocp.pdr.model.ResultatApprovisionnement;
 import com.ocp.pdr.model.enums.ModeApprovisionnement;
 import com.ocp.pdr.repository.AnomalieConsommationRepository;
 import com.ocp.pdr.repository.ArticlePDRRepository;
+import com.ocp.pdr.repository.HistoriqueTraitementRepository;
 import com.ocp.pdr.repository.ResultatApprovisionnementRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class MoteurApprovisionnementService {
     private final ArticlePDRRepository articlePDRRepository;
     private final ResultatApprovisionnementRepository resultatApprovisionnementRepository;
     private final AnomalieConsommationRepository anomalieConsommationRepository;
+    private final HistoriqueTraitementRepository historiqueTraitementRepository;
 
     @Transactional
     public ResultatApprovisionnement analyser(ArticlePDR article) {
@@ -103,12 +106,26 @@ public class MoteurApprovisionnementService {
 
             long duration = System.currentTimeMillis() - startTime;
             log.info("Analyse globale terminée en {}ms. Résultats générés: {}", duration, resultats.size());
+            enregistrerTraitement("SUCCESS", "Analyse globale terminée en " + duration + "ms");
             
             return resultats;
         } catch (Exception e) {
             log.error("Erreur critique lors de l'analyse globale", e);
+            enregistrerTraitement("ERROR", e.getMessage());
             throw new RuntimeException("Erreur lors de l'analyse globale: " + e.getMessage());
         }
+    }
+
+    private void enregistrerTraitement(String statut, String message) {
+        if (historiqueTraitementRepository == null) {
+            return;
+        }
+        HistoriqueTraitement historique = new HistoriqueTraitement();
+        historique.setOperation("ANALYSE_GLOBALE");
+        historique.setDateOperation(java.time.LocalDateTime.now());
+        historique.setStatut(statut);
+        historique.setMessage(message);
+        historiqueTraitementRepository.save(historique);
     }
 
     @Transactional(readOnly = true)

@@ -49,8 +49,15 @@ const ImportPage = () => {
           }
         });
 
+        const importResult = response.data;
+        if (importResult?.success === false) {
+          const details = Array.isArray(importResult.detailsErreurs)
+            ? ` ${importResult.detailsErreurs.join(' | ')}`
+            : '';
+          throw new Error(`${importResult.message || 'Importation échouée.'}${details}`);
+        }
         importMessages.push(
-          `${file.name}: ${typeof response.data === 'string' ? response.data : 'Importation réussie.'}`
+          `${file.name}: ${typeof importResult === 'string' ? importResult : importResult?.message || 'Importation réussie.'}`
         );
       }
 

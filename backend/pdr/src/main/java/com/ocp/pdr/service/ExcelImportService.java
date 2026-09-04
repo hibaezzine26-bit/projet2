@@ -1,20 +1,49 @@
 package com.ocp.pdr.service;
 
-import com.ocp.pdr.model.*;
-import com.ocp.pdr.model.enums.GroupeHomogene;
-import com.ocp.pdr.repository.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
+import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import com.ocp.pdr.dto.response.ImportResult;
+import com.ocp.pdr.model.ArticlePDR;
+import com.ocp.pdr.model.BacklogOT;
+import com.ocp.pdr.model.BesoinEnCours;
+import com.ocp.pdr.model.Consommation;
+import com.ocp.pdr.model.FicheBOM;
+import com.ocp.pdr.model.HistoriqueTraitement;
+import com.ocp.pdr.model.ImportDonnees;
+import com.ocp.pdr.model.Secteur;
+import com.ocp.pdr.model.Stock;
+import com.ocp.pdr.model.enums.GroupeHomogene;
+import com.ocp.pdr.model.enums.StatutImport;
+import com.ocp.pdr.repository.AdministrateurRepository;
+import com.ocp.pdr.repository.ArticlePDRRepository;
+import com.ocp.pdr.repository.BacklogOTRepository;
+import com.ocp.pdr.repository.BesoinEnCoursRepository;
+import com.ocp.pdr.repository.ConsommationRepository;
+import com.ocp.pdr.repository.FicheBOMRepository;
+import com.ocp.pdr.repository.HistoriqueTraitementRepository;
+import com.ocp.pdr.repository.ImportDonneesRepository;
+import com.ocp.pdr.repository.SecteurRepository;
+import com.ocp.pdr.repository.StockRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -22,14 +51,18 @@ import java.util.*;
 public class ExcelImportService {
 
     private final ArticlePDRRepository articlePDRRepository;
+    private final AdministrateurRepository administrateurRepository;
     private final StockRepository stockRepository;
     private final BacklogOTRepository backlogOTRepository;
     private final FicheBOMRepository bomRepository;
     private final ConsommationRepository consommationRepository;
+    private final BesoinEnCoursRepository besoinRepository;
     private final SecteurRepository secteurRepository;
+    private final ImportDonneesRepository importDonneesRepository;
+    private final HistoriqueTraitementRepository historiqueTraitementRepository;
 
     @Transactional
-    public String importExcelData(MultipartFile file) throws Exception {
+    public ImportResult importExcelData(MultipartFile file) throws Exception {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Le fichier fourni est vide ou invalide.");
         }
@@ -39,6 +72,19 @@ public class ExcelImportService {
         int bomCount = 0;
         int consoCount = 0;
         int articleCount = 0;
+        int besoinCount = 0;
+        ImportResult.ImportResultBuilder report = new ImportResult.ImportResultBuilder();
+        ImportDonnees importDonnees = new ImportDonnees();
+        importDonnees.setNomFichier(file.getOriginalFilename());
+        importDonnees.setDateImport(java.time.LocalDateTime.now());
+        importDonnees.setStatut(StatutImport.PENDING);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+            && authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails userDetails) {
+            administrateurRepository.findByEmail(userDetails.getUsername())
+                .ifPresent(importDonnees::setAdministrateur);
+        }
+        importDonnees = importDonneesRepository.save(importDonnees);
 
         try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
             for (int s = 0; s < workbook.getNumberOfSheets(); s++) {
@@ -48,50 +94,67 @@ public class ExcelImportService {
                 Map<String, Integer> colMap = getHeaderMap(sheet);
                 if (colMap.isEmpty()) continue;
 
+                boolean consommationSheet = containsAnyKey(colMap, "q consommee", "quantite consommee", "consommee", "consommation", "consomm")
+                        || sheet.getSheetName().toLowerCase().contains("conso");
+
+                // Une feuille de consommation peut aussi contenir Q INSTALLEE.
+                if (consommationSheet) {
+                    consoCount += importConsommationSheet(sheet, colMap, report, file.getOriginalFilename());
+                }
                 // 1. Détection BOM / Articles complets (si Q INSTALLEE ou GROUPE HOMOGENE ou SEUIL MIN présents)
-                if (containsAnyKey(colMap, "q installee", "quantite installee", "groupe homogene", "seuil min", "seuil max")) {
+                else if (containsAnyKey(colMap, "q installee", "quantite installee", "groupe homogene", "seuil min", "seuil max")) {
                     int count = importBOMMasterSheet(sheet, colMap);
                     articleCount += count;
                     bomCount += count;
                 }
                 // 2. Détection Stock (si Q STOCK présent ou nom de feuille = stock)
                 else if (containsAnyKey(colMap, "q stock", "quantite stock", "stock") || sheet.getSheetName().toLowerCase().contains("stock")) {
-                    stockCount += importStockSheet(sheet, colMap);
+                    stockCount += importStockSheet(sheet, colMap, file.getOriginalFilename());
                 }
                 // 3. Détection Backlog (si Q NON LANCEE ou OT présent sans DATE de conso)
                 else if (containsAnyKey(colMap, "q non lancee", "quantite non lancee", "non lancee") || sheet.getSheetName().toLowerCase().contains("backlog")) {
-                    backlogCount += importBacklogSheet(sheet, colMap);
+                    backlogCount += importBacklogSheet(sheet, colMap, file.getOriginalFilename());
                 }
-                // 4. Détection Consommation (si Q CONSOMMEE ou N OT avec DATE de conso)
-                else if (containsAnyKey(colMap, "q consommee", "quantite consommee", "consommee", "consommation") || sheet.getSheetName().toLowerCase().contains("conso")) {
-                    consoCount += importConsommationSheet(sheet, colMap);
+                // 4. Détection des besoins en cours
+                else if (containsAnyKey(colMap, "q besoin", "quantite besoin", "besoin en cours", "statut besoin")
+                        || sheet.getSheetName().toLowerCase().contains("besoin")) {
+                    besoinCount += importBesoinSheet(sheet, colMap, report, file.getOriginalFilename());
                 }
                 // 5. Fallback d'auto-détection basé sur les colonnes
                 else {
                     if (containsAnyKey(colMap, "code sap", "code_sap")) {
                         if (containsAnyKey(colMap, "stock")) {
-                            stockCount += importStockSheet(sheet, colMap);
+                            stockCount += importStockSheet(sheet, colMap, file.getOriginalFilename());
                         } else if (containsAnyKey(colMap, "lancee")) {
-                            backlogCount += importBacklogSheet(sheet, colMap);
+                            backlogCount += importBacklogSheet(sheet, colMap, file.getOriginalFilename());
                         } else {
-                            stockCount += importStockSheet(sheet, colMap);
+                            stockCount += importStockSheet(sheet, colMap, file.getOriginalFilename());
                         }
                     }
                 }
             }
         }
 
-        List<String> details = new ArrayList<>();
-        if (articleCount > 0) details.add(articleCount + " fiches articles/BOM");
-        if (stockCount > 0) details.add(stockCount + " lignes de stock");
-        if (backlogCount > 0) details.add(backlogCount + " ordres backlog OT");
-        if (consoCount > 0) details.add(consoCount + " lignes de consommation");
-
-        if (details.isEmpty()) {
-            return "Fichier traité, mais aucune structure de données reconnue (Vérifiez les en-têtes: CODE SAP, Q STOCK, Q NON LANCEE, Q CONSOMMEE, etc.).";
-        }
-
-        return "Importation réussie : " + String.join(", ", details) + ".";
+        report.addDetail(articleCount, "fiches articles/BOM");
+        report.addDetail(stockCount, "lignes de stock");
+        report.addDetail(backlogCount, "ordres backlog OT");
+        report.addDetail(consoCount, "lignes de consommation");
+        report.addDetail(besoinCount, "besoins en cours");
+        ImportResult result = ImportResult.from(report);
+        importDonnees.setNombreLignes(result.lignesImportees());
+        importDonnees.setStatut(result.success() ? StatutImport.SUCCESS
+            : result.lignesImportees() > 0 ? StatutImport.PARTIAL_SUCCESS : StatutImport.ERROR);
+        importDonnees.setMessageResultat(result.message() + (result.detailsErreurs().isEmpty()
+            ? "" : " Erreurs: " + String.join(" | ", result.detailsErreurs())));
+        importDonneesRepository.save(importDonnees);
+        HistoriqueTraitement historique = new HistoriqueTraitement();
+        historique.setOperation("IMPORT_EXCEL");
+        historique.setDateOperation(java.time.LocalDateTime.now());
+        historique.setStatut(importDonnees.getStatut().name());
+        historique.setMessage(importDonnees.getMessageResultat());
+        historique.setImportDonnees(importDonnees);
+        historiqueTraitementRepository.save(historique);
+        return result;
     }
 
     private Map<String, Integer> getHeaderMap(Sheet sheet) {
@@ -252,7 +315,7 @@ public class ExcelImportService {
     }
 
     // 2. Importation Stock
-    private int importStockSheet(Sheet sheet, Map<String, Integer> colMap) {
+    private int importStockSheet(Sheet sheet, Map<String, Integer> colMap, String sourceFile) {
         int count = 0;
         Integer colCodeSAP = getColumnIndex(colMap, "code sap", "sap");
         Integer colCodeOracle = getColumnIndex(colMap, "code oracle", "oracle");
@@ -278,6 +341,8 @@ public class ExcelImportService {
                 stock.setArticle(article);
                 stock.setQuantiteStock(quantite);
                 stock.setDateStock(LocalDate.now());
+                stock.setSourceFichier(sourceFile);
+                stock.setDateImport(java.time.LocalDateTime.now());
                 stockRepository.save(stock);
                 count++;
             }
@@ -286,7 +351,7 @@ public class ExcelImportService {
     }
 
     // 3. Importation Backlog
-    private int importBacklogSheet(Sheet sheet, Map<String, Integer> colMap) {
+    private int importBacklogSheet(Sheet sheet, Map<String, Integer> colMap, String sourceFile) {
         int count = 0;
         Integer colCodeSAP = getColumnIndex(colMap, "code sap", "sap");
         Integer colDesc = getColumnIndex(colMap, "description", "designation");
@@ -313,6 +378,8 @@ public class ExcelImportService {
                 backlog.setNumeroOT(numeroOT);
                 backlog.setQuantiteNonLancee(quantite);
                 backlog.setDateImport(LocalDate.now());
+                backlog.setSourceFichier(sourceFile);
+                backlog.setDateImportSysteme(java.time.LocalDateTime.now());
                 backlogOTRepository.save(backlog);
                 count++;
             }
@@ -321,11 +388,13 @@ public class ExcelImportService {
     }
 
     // 4. Importation Consommation
-    private int importConsommationSheet(Sheet sheet, Map<String, Integer> colMap) {
+    private int importConsommationSheet(Sheet sheet, Map<String, Integer> colMap,
+                                        ImportResult.ImportResultBuilder report, String sourceFile) {
         int count = 0;
         Integer colCodeSAP = getColumnIndex(colMap, "code sap", "sap");
         Integer colDesc = getColumnIndex(colMap, "description", "designation");
-        Integer colQConso = getColumnIndex(colMap, "q consommee", "consommee", "quantite");
+        Integer colQConso = getColumnIndex(colMap, "q consommee", "consommee", "consomm", "quantite");
+        Integer colQInstallee = getColumnIndex(colMap, "q installee", "quantite installee", "installee");
         Integer colUdm = getColumnIndex(colMap, "udm");
         Integer colOT = getColumnIndex(colMap, "n ot", "ot", "numero ot");
         Integer colDate = getColumnIndex(colMap, "date", "date consommation");
@@ -334,26 +403,72 @@ public class ExcelImportService {
             Row row = sheet.getRow(i);
             if (row == null) continue;
 
-            String codeSAP = colCodeSAP != null ? extractStringValue(row.getCell(colCodeSAP)) : extractStringValue(row.getCell(0));
-            if (codeSAP.isEmpty()) continue;
+            try {
+                String codeSAP = colCodeSAP != null ? extractStringValue(row.getCell(colCodeSAP)) : extractStringValue(row.getCell(0));
+                if (codeSAP.isEmpty()) continue;
+                String description = colDesc != null ? extractStringValue(row.getCell(colDesc)) : "";
+                String udm = colUdm != null ? extractStringValue(row.getCell(colUdm)) : "";
+                double quantite = colQConso != null
+                    ? Math.abs(extractNumericValue(row.getCell(colQConso)))
+                    : 0.0;
+                Double quantiteInstallee = colQInstallee != null ? extractNumericValue(row.getCell(colQInstallee)) : null;
+                String numeroOT = colOT != null ? extractStringValue(row.getCell(colOT)) : "OT-" + System.currentTimeMillis();
+                LocalDate dateConso = colDate != null ? extractDateValue(row.getCell(colDate)) : LocalDate.now();
+                ArticlePDR article = getOrCreateArticle(codeSAP, null, description, udm);
+                if (article != null) {
+                    if (quantiteInstallee != null) {
+                        article.setQuantiteInstallee(quantiteInstallee);
+                        articlePDRRepository.save(article);
+                    }
+                    Consommation conso = new Consommation();
+                    conso.setArticle(article);
+                    conso.setQuantiteConsommee(quantite);
+                    conso.setNumeroOT(numeroOT);
+                    conso.setDateConsommation(dateConso);
+                    conso.setSourceFichier(sourceFile);
+                    conso.setDateImport(java.time.LocalDateTime.now());
+                    consommationRepository.save(conso);
+                    count++;
+                }
+            } catch (IllegalArgumentException exception) {
+                report.addError("Feuille " + sheet.getSheetName() + ", ligne " + (i + 1) + ": " + exception.getMessage());
+            }
+        }
+        return count;
+    }
 
-            String description = colDesc != null ? extractStringValue(row.getCell(colDesc)) : "";
-            String udm = colUdm != null ? extractStringValue(row.getCell(colUdm)) : "";
-            double quantiteBrute = colQConso != null ? extractNumericValue(row.getCell(colQConso)) : 0.0;
-            double quantite = Math.abs(quantiteBrute); // Convertit les sorties négatives (ex: -1.000) en quantités consommées positives
-
-            String numeroOT = colOT != null ? extractStringValue(row.getCell(colOT)) : "OT-" + System.currentTimeMillis();
-            LocalDate dateConso = colDate != null ? extractDateValue(row.getCell(colDate)) : LocalDate.now();
-
-            ArticlePDR article = getOrCreateArticle(codeSAP, null, description, udm);
-            if (article != null) {
-                Consommation conso = new Consommation();
-                conso.setArticle(article);
-                conso.setQuantiteConsommee(quantite);
-                conso.setNumeroOT(numeroOT);
-                conso.setDateConsommation(dateConso);
-                consommationRepository.save(conso);
-                count++;
+    private int importBesoinSheet(Sheet sheet, Map<String, Integer> colMap,
+                                  ImportResult.ImportResultBuilder report, String sourceFile) {
+        int count = 0;
+        Integer colCodeSAP = getColumnIndex(colMap, "code sap", "sap");
+        Integer colDesc = getColumnIndex(colMap, "description", "designation");
+        Integer colQBesoin = getColumnIndex(colMap, "q besoin", "quantite besoin", "besoin", "quantite");
+        Integer colDate = getColumnIndex(colMap, "date besoin", "date");
+        Integer colStatut = getColumnIndex(colMap, "statut", "etat");
+        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row == null) continue;
+            try {
+                String codeSAP = colCodeSAP != null ? extractStringValue(row.getCell(colCodeSAP)) : extractStringValue(row.getCell(0));
+                if (codeSAP.isEmpty()) continue;
+                String description = colDesc != null ? extractStringValue(row.getCell(colDesc)) : "";
+                double quantite = extractNumericValue(row.getCell(colQBesoin));
+                LocalDate dateBesoin = colDate != null ? extractDateValue(row.getCell(colDate)) : LocalDate.now();
+                String statut = colStatut != null ? extractStringValue(row.getCell(colStatut)) : "EN_COURS";
+                ArticlePDR article = getOrCreateArticle(codeSAP, null, description, null);
+                if (article != null) {
+                    BesoinEnCours besoin = new BesoinEnCours();
+                    besoin.setArticle(article);
+                    besoin.setQuantiteBesoin(quantite);
+                    besoin.setDateBesoin(dateBesoin);
+                    besoin.setStatut(statut);
+                    besoin.setSourceFichier(sourceFile);
+                    besoin.setDateImport(java.time.LocalDateTime.now());
+                    besoinRepository.save(besoin);
+                    count++;
+                }
+            } catch (IllegalArgumentException exception) {
+                report.addError("Feuille " + sheet.getSheetName() + ", ligne " + (i + 1) + ": " + exception.getMessage());
             }
         }
         return count;
@@ -391,7 +506,7 @@ public class ExcelImportService {
     }
 
     private double extractNumericValue(Cell cell) {
-        if (cell == null) return 0.0;
+        if (cell == null || cell.getCellType() == CellType.BLANK) return 0.0;
         switch (cell.getCellType()) {
             case NUMERIC:
                 return cell.getNumericCellValue();
@@ -399,24 +514,31 @@ public class ExcelImportService {
                 try {
                     String str = cell.getStringCellValue().trim()
                             .replace(" ", "")
-                            .replace(",", ".");
+                            .replace("\u00A0", "")
+                            .replace("'", "");
+                    if (str.isEmpty() || str.equals("-") || str.equals("—")) return 0.0;
+                    if (str.contains(",")) {
+                        str = str.replace(".", "").replace(",", ".");
+                    } else if (str.indexOf('.') != str.lastIndexOf('.')) {
+                        str = str.replace(".", "");
+                    }
                     return Double.parseDouble(str);
                 } catch (NumberFormatException e) {
-                    return 0.0;
+                    throw new IllegalArgumentException("valeur numérique invalide: " + cell.getStringCellValue());
                 }
             case FORMULA:
                 try {
                     return cell.getNumericCellValue();
                 } catch (Exception e) {
-                    return 0.0;
+                    throw new IllegalArgumentException("formule numérique invalide");
                 }
             default:
-                return 0.0;
+                throw new IllegalArgumentException("valeur numérique invalide");
         }
     }
 
     private LocalDate extractDateValue(Cell cell) {
-        if (cell == null) return LocalDate.now();
+        if (cell == null) throw new IllegalArgumentException("date manquante");
         if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
             return cell.getLocalDateTimeCellValue().toLocalDate();
         }
@@ -430,10 +552,11 @@ public class ExcelImportService {
                 } else if (val.contains("-")) {
                     return LocalDate.parse(val, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
                 }
-            } catch (Exception ignored) {
+            } catch (Exception exception) {
+                throw new IllegalArgumentException("date invalide: " + val);
             }
         }
-        return LocalDate.now();
+        throw new IllegalArgumentException("date invalide");
     }
 }
 

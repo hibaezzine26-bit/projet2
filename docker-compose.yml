@@ -8,11 +8,38 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: pdr_db
       MYSQL_USER: projet2
-      MYSQL_PASSWORD: 
-    ports:
-      - "13306:3306"
+      MYSQL_PASSWORD: projet2
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend/pdr
+    container_name: projet2-backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/pdr_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8&useUnicode=true
+      SPRING_DATASOURCE_USERNAME: projet2
+      SPRING_DATASOURCE_PASSWORD: projet2
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: projet2-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
 volumes:
   mysql_data:

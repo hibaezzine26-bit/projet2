@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.ocp.pdr.dto.response.ImportResult;
 import com.ocp.pdr.service.ExcelExportService;
 import com.ocp.pdr.service.ExcelImportService;
 
@@ -53,13 +54,16 @@ public class ImportExportController {
             log.info("Import de fichier en cours: {}", file.getOriginalFilename());
             long startTime = System.currentTimeMillis();
             
-            String message = excelImportService.importExcelData(file);
+            ImportResult importResult = excelImportService.importExcelData(file);
             
             long duration = System.currentTimeMillis() - startTime;
             log.info("Import terminé avec succès en {}ms", duration);
             
-            response.put("success", true);
-            response.put("message", message);
+            response.put("success", importResult.success());
+            response.put("message", importResult.message());
+            response.put("lignesImportees", importResult.lignesImportees());
+            response.put("erreurs", importResult.erreurs());
+            response.put("detailsErreurs", importResult.detailsErreurs());
             response.put("fileName", file.getOriginalFilename());
             response.put("duration", duration);
             response.put("timestamp", System.currentTimeMillis());

@@ -13,8 +13,7 @@ public class RegleSurDemandeService {
             return false;
         }
 
-        boolean presentDansBacklog = article.getBacklogOTs() != null && article.getBacklogOTs().stream()
-                .anyMatch(ot -> ot.getQuantiteNonLancee() != null && ot.getQuantiteNonLancee() > 0);
+        boolean presentDansBacklog = article.getBacklogOTs() != null && !article.getBacklogOTs().isEmpty();
 
         double stockTotal = calculerStockTotal(article);
         boolean stockInsuffisant = article.getSeuilMin() != null && stockTotal < article.getSeuilMin();
@@ -25,13 +24,12 @@ public class RegleSurDemandeService {
     }
 
     public Double calculerQuantite(ArticlePDR article) {
-        if (article != null && article.getBesoinsEnCours() != null) {
-            return article.getBesoinsEnCours().stream()
-                    .filter(b -> b.getQuantiteBesoin() != null)
-                    .mapToDouble(b -> b.getQuantiteBesoin())
-                    .sum();
+        if (article == null || article.getSeuilMax() == null) {
+            return 0.0;
         }
-        return 0.0;
+
+        double quantiteALancer = article.getSeuilMax() - calculerStockTotal(article);
+        return Math.max(quantiteALancer, 0.0);
     }
 
     private boolean isGroupePrioritaire(ArticlePDR article) {

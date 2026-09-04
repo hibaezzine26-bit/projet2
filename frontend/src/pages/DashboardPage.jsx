@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Button from '../components/ui/Button';
-import { RefreshCw } from 'lucide-react';
+import { Layers, RefreshCw } from 'lucide-react';
 import './DashboardPage.css';
 import api from '../services/api';
 
@@ -67,12 +67,12 @@ const DashboardPage = () => {
     {
       label: 'Min & Max',
       value: Number(stats.minMaxCount || 0),
-      color: '#34d399'
+      color: '#00a651'
     },
     {
       label: 'Planifié',
       value: Number(stats.planifieCount || 0),
-      color: '#fbbf24'
+      color: '#2864e8'
     },
     {
       label: 'Sur demande',
@@ -134,59 +134,31 @@ const DashboardPage = () => {
 
       <Card className="donut-card animate-fade-in delay-2">
         <div className="donut-header-row">
-          <div>
-            <h3>Répartition des états</h3>
-            <p>Vue globale des catégories d’approvisionnement</p>
+          <h3><Layers size={19} /> Répartition des règles d’approvisionnement</h3>
+          <div className="donut-summary-total">
+            <span>Total articles</span>
+            <strong>{stats.totalArticles}</strong>
           </div>
-          <div className="donut-summary-total">{stats.totalArticles}</div>
         </div>
 
-        <div className="donut-layout">
-          <div className="donut-wrap">
-            <svg viewBox="0 0 220 220" className="donut-svg" role="img" aria-label="Répartition des états">
-              <circle cx="110" cy="110" r="78" className="donut-track" />
-              {donutChart.map((segment, index) => {
-                const radius = 78;
-                const circumference = 2 * Math.PI * radius;
-                const dashLength = (segment.percent / 100) * circumference;
-                const offset = donutChart
-                  .slice(0, index)
-                  .reduce((sum, item) => sum + (item.percent / 100) * circumference, 0);
-
-                return (
-                  <circle
-                    key={segment.label}
-                    cx="110"
-                    cy="110"
-                    r={radius}
-                    className="donut-ring"
-                    style={{
-                      stroke: segment.color,
-                      strokeDasharray: `${dashLength} ${circumference - dashLength}`,
-                      strokeDashoffset: -offset
-                    }}
-                  />
-                );
-              })}
-            </svg>
-            <div className="donut-center">
-              <div className="donut-center-number">{stats.totalArticles}</div>
-              <div className="donut-center-label">articles</div>
-            </div>
-          </div>
-
-          <div className="donut-legend">
-            {donutChart.map((segment) => (
-              <div key={segment.label} className="legend-item">
-                <span className="legend-color" style={{ background: segment.color }} />
-                <div className="legend-text">
-                  <span>{segment.label}</span>
-                  <strong>{segment.value}</strong>
-                </div>
-                <span className="legend-percent">{segment.displayPercent}%</span>
+        <div className="rule-chart" role="img" aria-label="Répartition des règles d'approvisionnement">
+          {donutChart.map((segment) => (
+            <div key={segment.label} className="rule-row">
+              <div className="rule-row-header">
+                <span className="rule-label">
+                  <span className="legend-color" style={{ background: segment.color }} />
+                  {segment.label}
+                </span>
+                <strong>{segment.value} articles ({segment.displayPercent}%)</strong>
               </div>
-            ))}
-          </div>
+              <div className="rule-track">
+                <div
+                  className="rule-bar"
+                  style={{ width: `${segment.percent}%`, background: segment.color }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 
