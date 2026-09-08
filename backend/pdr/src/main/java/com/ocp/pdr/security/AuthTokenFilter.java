@@ -14,6 +14,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class AuthTokenFilter extends OncePerRequestFilter {
     
     @Autowired
@@ -38,7 +41,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
-            System.err.println("Cannot set user authentication: " + e.getMessage());
+            log.error("Impossible de définir l'authentification utilisateur: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);

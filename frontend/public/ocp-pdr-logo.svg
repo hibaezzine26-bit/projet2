@@ -1,42 +1,33 @@
 <svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="ocpGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="ocpGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#00C853" />
       <stop offset="100%" stop-color="#007E33" />
     </linearGradient>
-    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3B82F6" />
-      <stop offset="100%" stop-color="#1D4ED8" />
-    </linearGradient>
-    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="shieldGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#1E293B" />
       <stop offset="100%" stop-color="#0F172A" />
     </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%" filterUnits="userSpaceOnUse">
+    <filter id="shadow2" x="-10%" y="-10%" width="120%" height="125%" filterUnits="userSpaceOnUse">
       <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#00A651" flood-opacity="0.35" />
     </filter>
   </defs>
 
   <!-- Background Shield -->
-  <rect x="16" y="16" width="208" height="208" rx="48" fill="url(#shieldGrad)" stroke="rgba(255,255,255,0.12)" stroke-width="2" />
+  <rect x="16" y="16" width="208" height="208" rx="48" fill="url(#shieldGrad2)" stroke="rgba(255,255,255,0.12)" stroke-width="2" />
   
   <!-- Outer Glow Hexagon / Gear Pattern -->
-  <circle cx="120" cy="120" r="82" stroke="url(#ocpGrad)" stroke-width="3.5" stroke-dasharray="8 6" opacity="0.4" />
+  <circle cx="120" cy="120" r="82" stroke="url(#ocpGrad2)" stroke-width="3.5" stroke-dasharray="8 6" opacity="0.4" />
   
   <!-- Industrial Diamond / Box Graphic -->
-  <g filter="url(#shadow)">
-    <!-- Main OCP Green Hex Shape -->
-    <path d="M120 44L176 76V140L120 172L64 140V76L120 44Z" fill="url(#ocpGrad)" />
-    <!-- Inner Slate Cutout -->
+  <g filter="url(#shadow2)">
+    <path d="M120 44L176 76V140L120 172L64 140V76L120 44Z" fill="url(#ocpGrad2)" />
     <path d="M120 62L160 85V131L120 154L80 131V85L120 62Z" fill="#0F172A" />
   </g>
 
   <!-- PDR Tech Icon: Cube & Smart Flow -->
-  <!-- Top Face -->
   <path d="M120 74L148 90L120 106L92 90L120 74Z" fill="#00E676" />
-  <!-- Left Face -->
   <path d="M92 94L120 110V142L92 126V94Z" fill="#00A651" />
-  <!-- Right Face -->
   <path d="M120 110L148 94V126L120 142V110Z" fill="#007E33" />
 
   <!-- Accent Pulse Dot -->

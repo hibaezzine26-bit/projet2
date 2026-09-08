@@ -177,4 +177,32 @@ public class MoteurApprovisionnementService {
     public Map<String, Object> obtenirSummaryAnalyseDto() {
         return obtenirSummaryAnalyse();
     }
+
+    @Transactional(readOnly = true)
+    public List<ResultatApprovisionnement> obtenirTousLesResultats() {
+        return resultatApprovisionnementRepository.findAllWithArticle();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isAnalyseLancee() {
+        return historiqueTraitementRepository
+                .findTopByOperationAndStatutOrderByDateOperationDesc("ANALYSE_GLOBALE", "SUCCESS")
+                .isPresent();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> obtenirStatistiques() {
+        Map<String, Object> stats = new HashMap<>();
+        long totalArticles = articlePDRRepository.count();
+        long totalResultats = resultatApprovisionnementRepository.count();
+        long totalAnomalies = anomalieConsommationRepository.count();
+
+        stats.put("totalArticles", totalArticles);
+        stats.put("articlesAnalyses", totalResultats);
+        stats.put("anomaliesDetectees", totalAnomalies);
+        stats.put("tauxAnalyse", totalArticles > 0 ? (double) totalResultats / totalArticles * 100 : 0);
+        stats.put("timestamp", System.currentTimeMillis());
+
+        return stats;
+    }
 }

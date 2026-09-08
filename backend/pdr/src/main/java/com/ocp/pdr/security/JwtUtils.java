@@ -10,7 +10,10 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Component
+@Slf4j
 public class JwtUtils {
 
     @Value("${pdr.app.jwtSecret:ocp_pdr_secret_key_which_must_be_at_least_256_bits_long}")
@@ -45,7 +48,7 @@ public class JwtUtils {
             Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(authToken);
             return true;
         } catch (JwtException e) {
-            System.err.println("Invalid JWT token: " + e.getMessage());
+            log.warn("Token JWT invalide ou expiré: {}", e.getMessage());
         }
         return false;
     }

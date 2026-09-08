@@ -12,9 +12,11 @@ import com.ocp.pdr.model.Administrateur;
 import com.ocp.pdr.repository.AdministrateurRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class DataSeeder implements CommandLineRunner {
 
     private final AdministrateurRepository administrateurRepository;
@@ -48,11 +50,9 @@ public class DataSeeder implements CommandLineRunner {
             admin.setActif(true);
             
             administrateurRepository.save(admin);
-            System.out.println("Compte administrateur de test créé avec succès !");
-            System.out.println("Email: " + testEmail);
-            System.out.println("Mot de passe: password123");
+            log.info("Compte administrateur initial créé avec succès (Email: {}, Mot de passe: password123)", testEmail);
         } else {
-            System.out.println("Le compte administrateur de test existe déjà.");
+            log.info("Le compte administrateur ({}) existe déjà.", testEmail);
         }
     }
 }

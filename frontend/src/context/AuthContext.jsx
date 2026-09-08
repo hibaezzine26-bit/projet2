@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import api from '../services/api';
+import authService from '../services/authService';
 import { useNavigate } from 'react-router-dom';
 
 export const AuthContext = createContext();
@@ -10,30 +10,33 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    localStorage.removeItem('token');
-    setUser(null);
+    const token = localStorage.getItem('token');
+    if (token) {
+      setUser({ token });
+    } else {
+      setUser(null);
+    }
     setLoading(false);
   }, []);
 
   const login = async (email, password) => {
     try {
-      const response = await api.post('/auth/login', { username: email, password });
-      const token = response.data?.token || response.data?.accessToken;
+      const data = await authService.login(email, password);
+      const token = data?.token || data?.accessToken;
       if (token) {
         localStorage.setItem('token', token);
         setUser({ token });
         navigate('/app/dashboard');
-        return;
+        return data;
       }
-      throw new Error('Token absent dans la réponse du backend');
+      throw new Error('Token absent dans la réponse du serveur');
     } catch (error) {
-      console.error('Login failed', error);
       throw error;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    authService.logout();
     setUser(null);
     navigate('/login');
   };

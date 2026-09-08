@@ -1,9 +1,11 @@
-package com.ocp.pdr.payload.response;
+package com.ocp.pdr.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 public class JwtResponse {
     private String token;

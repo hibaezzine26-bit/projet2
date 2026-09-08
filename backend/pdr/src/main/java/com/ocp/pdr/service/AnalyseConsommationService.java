@@ -1,6 +1,8 @@
 package com.ocp.pdr.service;
+
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
@@ -71,5 +73,9 @@ public class AnalyseConsommationService {
             return anomalieConsommationRepository.save(anomalie);
         }
         return null;
+    }
+
+    public List<AnomalieConsommation> obtenirToutesAnomalies() {
+        return anomalieConsommationRepository.findAllWithArticle();
     }
 }

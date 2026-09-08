@@ -1,9 +1,9 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import Card from '../components/ui/Card';
+import { useTheme } from '../context/ThemeContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import { Package, Lock, Mail } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Sun, Moon } from 'lucide-react';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -12,16 +12,21 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useContext(AuthContext);
+  const { toggleTheme, isDark } = useTheme();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    
+
     try {
       await login(email, password);
     } catch (err) {
-      setError('Identifiants incorrects. Veuillez réessayer.');
+      setError(
+        err.response?.data?.message ||
+        (typeof err.response?.data === 'string' ? err.response.data : null) ||
+        'Identifiants incorrects. Veuillez réessayer.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -29,50 +34,64 @@ const LoginPage = () => {
 
   return (
     <div className="login-container">
-      <div className="login-background-elements">
-        <div className="shape shape-1"></div>
-        <div className="shape shape-2"></div>
-      </div>
-      
-      <Card className="login-card animate-fade-in">
+      {/* Theme Switcher Button */}
+      <button
+        type="button"
+        className="login-theme-btn"
+        onClick={toggleTheme}
+        title={isDark ? 'Passer au mode clair' : 'Passer au mode sombre'}
+        aria-label="Changer de thème"
+      >
+        {isDark ? <Sun size={19} /> : <Moon size={19} />}
+      </button>
+
+      <div className="login-card animate-fade-in">
         <div className="login-header">
-          <div className="logo-container">
-            <img src="/ocp-logo.png" alt="OCP logo" className="brand-logo" />
-          </div>
+          <img src="/ocp-logo.png" alt="Logo OCP" className="login-logo" />
           <h1>PDR Manager</h1>
-          <p>Connectez-vous pour gérer vos approvisionnements</p>
+          <p>Connexion à votre espace</p>
         </div>
 
-        {error && <div className="login-error animate-fade-in">{error}</div>}
+        {error && (
+          <div className="login-error animate-fade-in">
+            <AlertCircle size={17} />
+            <span>{error}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="login-form">
-          <div className="input-with-icon">
-            <Mail className="input-icon" size={20} />
-            <Input
-              type="email"
-              placeholder="Adresse email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          
-          <div className="input-with-icon">
-            <Lock className="input-icon" size={20} />
-            <Input
-              type="password"
-              placeholder="Mot de passe"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          <Input
+            label="Email"
+            type="email"
+            icon={Mail}
+            placeholder="admin@ocp.ma"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus
+          />
 
-          <Button type="submit" className="login-btn" disabled={isLoading}>
-            {isLoading ? <div className="spinner"></div> : 'Se connecter'}
+          <Input
+            label="Mot de passe"
+            type="password"
+            icon={Lock}
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="login-btn"
+            loading={isLoading}
+          >
+            {isLoading ? 'Connexion en cours...' : 'Se connecter'}
           </Button>
         </form>
-      </Card>
+      </div>
     </div>
   );
 };

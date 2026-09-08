@@ -15,10 +15,7 @@ import com.ocp.pdr.dto.response.AnalysisSummaryResponse;
 import com.ocp.pdr.dto.response.ApiSuccessResponse;
 import com.ocp.pdr.model.AnomalieConsommation;
 import com.ocp.pdr.model.ResultatApprovisionnement;
-import com.ocp.pdr.repository.AnomalieConsommationRepository;
-import com.ocp.pdr.repository.ArticlePDRRepository;
-import com.ocp.pdr.repository.HistoriqueTraitementRepository;
-import com.ocp.pdr.repository.ResultatApprovisionnementRepository;
+import com.ocp.pdr.service.AnalyseConsommationService;
 import com.ocp.pdr.service.MoteurApprovisionnementService;
 
 import lombok.RequiredArgsConstructor;
@@ -32,10 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AnalyseController {
 
     private final MoteurApprovisionnementService moteurApprovisionnementService;
-    private final ResultatApprovisionnementRepository resultatRepository;
-    private final AnomalieConsommationRepository anomalieRepository;
-    private final ArticlePDRRepository articlePDRRepository;
-    private final HistoriqueTraitementRepository historiqueTraitementRepository;
+    private final AnalyseConsommationService analyseConsommationService;
 
     @PostMapping("/executer")
     public ResponseEntity<ApiSuccessResponse> executerAnalyse() {
@@ -64,19 +58,18 @@ public class AnalyseController {
 
     @GetMapping("/resultats")
     public ResponseEntity<List<ResultatApprovisionnement>> getResultats() {
-        return ResponseEntity.ok(resultatRepository.findAllWithArticle());
+        return ResponseEntity.ok(moteurApprovisionnementService.obtenirTousLesResultats());
     }
 
     @GetMapping("/anomalies")
     public ResponseEntity<List<AnomalieConsommation>> getAnomalies() {
-        return ResponseEntity.ok(anomalieRepository.findAllWithArticle());
+        return ResponseEntity.ok(analyseConsommationService.obtenirToutesAnomalies());
     }
 
     @GetMapping("/etat")
     public ResponseEntity<Map<String, Object>> getEtatAnalyse() {
         Map<String, Object> etat = new HashMap<>();
-        etat.put("analyseLancee", historiqueTraitementRepository
-                .findTopByOperationAndStatutOrderByDateOperationDesc("ANALYSE_GLOBALE", "SUCCESS").isPresent());
+        etat.put("analyseLancee", moteurApprovisionnementService.isAnalyseLancee());
         return ResponseEntity.ok(etat);
     }
 
@@ -102,27 +95,6 @@ public class AnalyseController {
 
     @GetMapping("/statistiques")
     public ResponseEntity<Map<String, Object>> getStatistiques() {
-        try {
-            Map<String, Object> stats = new HashMap<>();
-
-            long totalArticles = articlePDRRepository.count();
-            long totalResultats = resultatRepository.count();
-            long totalAnomalies = anomalieRepository.count();
-
-            stats.put("totalArticles", totalArticles);
-            stats.put("articlesAnalyses", totalResultats);
-            stats.put("anomaliesDetectees", totalAnomalies);
-            stats.put("tauxAnalyse", totalArticles > 0 ? (double) totalResultats / totalArticles * 100 : 0);
-            stats.put("timestamp", System.currentTimeMillis());
-
-            return ResponseEntity.ok(stats);
-        } catch (Exception e) {
-            log.error("Erreur lors de la génération des statistiques", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("message", e.getMessage());
-            error.put("timestamp", System.currentTimeMillis());
-            return ResponseEntity.internalServerError().body(error);
-        }
+        return ResponseEntity.ok(moteurApprovisionnementService.obtenirStatistiques());
     }
 }
